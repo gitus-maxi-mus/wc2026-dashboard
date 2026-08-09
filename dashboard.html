@@ -436,11 +436,11 @@
 
 <!-- ── Football intro overlay ── -->
 <div id="ball-overlay">
-  <canvas id="intro-ball"></canvas>
+  <img id="intro-ball" src="football.png" alt="football">
 </div>
 
 <!-- ── Persistent corner ball ── -->
-<canvas id="corner-ball"></canvas>
+<img id="corner-ball" src="football.png" alt="football">
 
 <!-- ── Header ── -->
 <header class="site-header fade-in fade-in-1">
@@ -474,6 +474,8 @@
   <a href="#potm">Player of Match</a>
   <span class="nav-sep">·</span>
   <a href="#ranking">FIFA Ranking</a>
+  <a href="#squad-age">Squad Age</a>
+  <a href="#market-value">Market Value</a>
 </nav>
 
 <main class="main">
@@ -658,6 +660,40 @@
         <p class="chart-card-title">Pre-Tournament FIFA Ranking vs Stage Reached</p>
         <p class="chart-card-sub">Lower ranking number = higher-ranked team &nbsp;·&nbsp; Upsets sit above the trend &nbsp;·&nbsp; source: teams.csv + matches_detailed.csv</p>
         <div class="chart-wrap" style="height:480px"><canvas id="rankingChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 12: Squad Age -->
+  <section class="section fade-in fade-in-8" id="squad-age">
+    <p class="section-title">Squad Age Analysis</p>
+    <div class="charts-grid" style="grid-template-columns:1fr 1fr">
+      <div class="chart-card" style="--chart-stripe:#00c9a7">
+        <p class="chart-card-title">Average Squad Age by Team</p>
+        <p class="chart-card-sub">All 48 squads ranked youngest to oldest &nbsp;·&nbsp; source: squads_and_players.csv</p>
+        <div class="chart-wrap" style="height:820px"><canvas id="squadAgeChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="--chart-stripe:#4a90d9">
+        <p class="chart-card-title">Squad Age Range</p>
+        <p class="chart-card-sub">Youngest vs oldest player per squad &nbsp;·&nbsp; bar = spread</p>
+        <div class="chart-wrap" style="height:820px"><canvas id="ageRangeChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 13: Market Value -->
+  <section class="section fade-in fade-in-8" id="market-value">
+    <p class="section-title">Player Market Value</p>
+    <div class="charts-grid" style="grid-template-columns:1fr 1fr">
+      <div class="chart-card" style="--chart-stripe:#FFB81C">
+        <p class="chart-card-title">Top 15 Players by Market Value</p>
+        <p class="chart-card-sub">Pre-tournament estimated value in EUR &nbsp;·&nbsp; source: squads_and_players.csv</p>
+        <div class="chart-wrap" style="height:420px"><canvas id="playerMvChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="--chart-stripe:#e8343c">
+        <p class="chart-card-title">Total Squad Value by Team (Top 20)</p>
+        <p class="chart-card-sub">Combined estimated market value of all squad members in EUR millions</p>
+        <div class="chart-wrap" style="height:420px"><canvas id="teamMvChart"></canvas></div>
       </div>
     </div>
   </section>
@@ -1154,74 +1190,57 @@
 
   /* ── Intro animation ── */
   (function runIntro() {
-    const overlay    = document.getElementById('ball-overlay');
-    const ballCanvas = document.getElementById('intro-ball');
-    const cornerCanvas = document.getElementById('corner-ball');
+    const overlay  = document.getElementById('ball-overlay');
+    const ballImg  = document.getElementById('intro-ball');
+    const cornerImg = document.getElementById('corner-ball');
     const vw = window.innerWidth, vh = window.innerHeight;
 
-    /* keyframes: {t, x, y, size, spin} */
-    const duration = 1800; /* ms total */
+    const duration = 1800;
     let startTime  = null;
-    let spin       = 0;
 
     function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
     function lerp(a, b, t) { return a + (b - a) * t; }
 
-    /* path: top-left → centre (max) → bottom-right (small) */
     function getFrame(t) {
       if (t <= 0.5) {
         const e = easeInOut(t / 0.5);
         return {
           x:    lerp(-80, vw / 2, e),
           y:    lerp(-80, vh / 2, e),
-          size: lerp(60,  Math.min(vw, vh) * 1.05, e)
+          size: lerp(60,  Math.min(vw, vh) * 1.05, e),
+          rot:  lerp(0, 360, e)
         };
       } else {
         const e = easeInOut((t - 0.5) / 0.5);
         return {
           x:    lerp(vw / 2,       vw + 40, e),
           y:    lerp(vh / 2,       vh + 40, e),
-          size: lerp(Math.min(vw, vh) * 1.05, 54, e)
+          size: lerp(Math.min(vw, vh) * 1.05, 54, e),
+          rot:  lerp(360, 540, e)
         };
       }
     }
 
+    let rot = 0;
     function frame(ts) {
       if (!startTime) startTime = ts;
       const elapsed = ts - startTime;
       const t       = Math.min(elapsed / duration, 1);
-      const { x, y, size } = getFrame(t);
+      const { x, y, size, rot } = getFrame(t);
 
-      spin += 0.04;
-      drawFootball(ballCanvas, Math.ceil(size), spin);
-
-      ballCanvas.style.width  = size + 'px';
-      ballCanvas.style.height = size + 'px';
-      ballCanvas.style.left   = (x - size / 2) + 'px';
-      ballCanvas.style.top    = (y - size / 2) + 'px';
+      ballImg.style.width  = size + 'px';
+      ballImg.style.height = size + 'px';
+      ballImg.style.left   = (x - size / 2) + 'px';
+      ballImg.style.top    = (y - size / 2) + 'px';
+      ballImg.style.transform = `rotate(${rot}deg)`;
 
       if (t < 1) {
         requestAnimationFrame(frame);
       } else {
-        /* intro done — show corner ball, start dashboard */
         overlay.classList.add('done');
         document.body.classList.remove('intro-running');
         document.body.classList.add('intro-done');
-
-        /* draw corner ball once, then CSS animation handles bounce */
-        drawFootball(cornerCanvas, 108, 0);
-        cornerCanvas.style.width  = '54px';
-        cornerCanvas.style.height = '54px';
-        cornerCanvas.classList.add('visible');
-
-        /* keep corner ball spinning gently */
-        let cornerSpin = 0;
-        function spinCorner() {
-          cornerSpin += 0.015;
-          drawFootball(cornerCanvas, 108, cornerSpin);
-          requestAnimationFrame(spinCorner);
-        }
-        spinCorner();
+        cornerImg.classList.add('visible');
       }
     }
 
@@ -1528,7 +1547,250 @@
     }
   });
 
-  /* Colour key for ranking chart */
+  /* ══════════════════════════════════════════
+     SECTION 12 — Squad Age Analysis
+  ══════════════════════════════════════════ */
+  const squadAgeData = [
+    {team:"Côte d'Ivoire",conf:"CAF",avg:25.8,min:19.6,max:34.9},
+    {team:"Ecuador",conf:"CONMEBOL",avg:26.1,min:19.1,max:39.2},
+    {team:"Bosnia & Herz.",conf:"UEFA",avg:26.5,min:18.7,max:40.2},
+    {team:"Morocco",conf:"CAF",avg:26.6,min:18.7,max:37.1},
+    {team:"Tunisia",conf:"CAF",avg:26.6,min:18.7,max:32.5},
+    {team:"Spain",conf:"UEFA",avg:26.7,min:18.9,max:33.4},
+    {team:"South Africa",conf:"CAF",avg:26.8,min:20.7,max:36.9},
+    {team:"Norway",conf:"UEFA",avg:26.8,min:21.1,max:35.8},
+    {team:"Algeria",conf:"CAF",avg:26.8,min:20.5,max:35.3},
+    {team:"USA",conf:"CONCACAF",avg:26.9,min:21.8,max:38.7},
+    {team:"Iraq",conf:"AFC",avg:26.9,min:22.2,max:35.1},
+    {team:"Canada",conf:"CONCACAF",avg:27.0,min:20.7,max:34.0},
+    {team:"France",conf:"UEFA",avg:27.0,min:20.3,max:35.2},
+    {team:"Ghana",conf:"CAF",avg:27.0,min:20.4,max:34.7},
+    {team:"Senegal",conf:"CAF",avg:27.1,min:18.4,max:36.7},
+    {team:"England",conf:"UEFA",avg:27.3,min:21.1,max:36.0},
+    {team:"Australia",conf:"AFC",avg:27.4,min:18.8,max:35.5},
+    {team:"Haiti",conf:"CONCACAF",avg:27.5,min:20.2,max:38.4},
+    {team:"Japan",conf:"AFC",avg:27.5,min:21.0,max:39.7},
+    {team:"Czechia",conf:"UEFA",avg:27.6,min:18.0,max:35.8},
+    {team:"Sweden",conf:"UEFA",avg:27.6,min:20.4,max:37.0},
+    {team:"Belgium",conf:"UEFA",avg:27.6,min:20.9,max:37.4},
+    {team:"Türkiye",conf:"UEFA",avg:27.7,min:20.6,max:37.3},
+    {team:"Netherlands",conf:"UEFA",avg:27.8,min:20.3,max:35.2},
+    {team:"Mexico",conf:"CONCACAF",avg:27.9,min:17.7,max:40.9},
+    {team:"Germany",conf:"UEFA",avg:28.0,min:20.1,max:40.2},
+    {team:"Curaçao",conf:"CONCACAF",avg:28.0,min:22.4,max:37.3},
+    {team:"Portugal",conf:"UEFA",avg:28.0,min:21.7,max:41.3},
+    {team:"South Korea",conf:"AFC",avg:28.1,min:22.8,max:35.7},
+    {team:"Uzbekistan",conf:"AFC",avg:28.2,min:18.8,max:35.4},
+    {team:"Switzerland",conf:"UEFA",avg:28.3,min:20.7,max:34.2},
+    {team:"New Zealand",conf:"OFC",avg:28.3,min:21.4,max:37.8},
+    {team:"Croatia",conf:"UEFA",avg:28.3,min:19.3,max:40.8},
+    {team:"Saudi Arabia",conf:"AFC",avg:28.5,min:23.0,max:35.1},
+    {team:"Jordan",conf:"AFC",avg:28.5,min:20.6,max:34.4},
+    {team:"Austria",conf:"UEFA",avg:28.6,min:20.5,max:37.1},
+    {team:"Uruguay",conf:"CONMEBOL",avg:28.7,min:24.5,max:40.0},
+    {team:"Paraguay",conf:"CONMEBOL",avg:29.0,min:20.9,max:38.2},
+    {team:"Egypt",conf:"CAF",avg:29.1,min:18.4,max:39.0},
+    {team:"Argentina",conf:"CONMEBOL",avg:29.1,min:21.8,max:39.0},
+    {team:"Congo DR",conf:"CAF",avg:29.1,min:21.4,max:35.2},
+    {team:"Scotland",conf:"UEFA",avg:29.2,min:19.2,max:43.4},
+    {team:"Brazil",conf:"CONMEBOL",avg:29.4,min:19.9,max:38.5},
+    {team:"Qatar",conf:"AFC",avg:29.5,min:20.0,max:36.4},
+    {team:"Cabo Verde",conf:"CAF",avg:29.7,min:23.6,max:40.0},
+    {team:"Colombia",conf:"CONMEBOL",avg:30.1,min:22.9,max:37.8},
+    {team:"IR Iran",conf:"AFC",avg:30.3,min:20.2,max:37.1},
+    {team:"Panama",conf:"CONCACAF",avg:30.4,min:24.6,max:38.5}
+  ];
+
+  const ageConfColors = squadAgeData.map(d => CONF_COLORS[d.conf] || '#888');
+
+  new Chart(document.getElementById('squadAgeChart'), {
+    type: 'bar', plugins: [hBar3D],
+    data: {
+      labels: squadAgeData.map(d => d.team),
+      datasets: [{
+        label: 'Avg Age', data: squadAgeData.map(d => d.avg),
+        backgroundColor: ageConfColors.map(c => c + 'dd'),
+        borderRadius: 3, borderSkipped: false, barThickness: 14
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      animation: { duration: 600, delay: wfDelay, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: {
+          title: c => c[0].label,
+          label: c => ` Avg age: ${c.parsed.x} yrs  [${squadAgeData[c.dataIndex].conf}]`
+        }}
+      },
+      scales: {
+        x: {
+          min: 24, max: 32,
+          grid: { color: 'rgba(255,255,255,.05)' },
+          ticks: { color: '#7aaccf', font: { size: 10 }, callback: v => v + ' yrs' },
+          border: { color: 'rgba(255,255,255,.08)' }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e8f4fd', font: { size: 10 }, padding: 6 }, border: { display: false } }
+      }
+    }
+  });
+
+  /* Age range chart — floating bar (min→max) */
+  new Chart(document.getElementById('ageRangeChart'), {
+    type: 'bar',
+    data: {
+      labels: squadAgeData.map(d => d.team),
+      datasets: [{
+        label: 'Age range',
+        data: squadAgeData.map(d => [d.min, d.max]),
+        backgroundColor: ageConfColors.map(c => c + '99'),
+        borderColor:     ageConfColors,
+        borderWidth: 1,
+        borderSkipped: false, barThickness: 10
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: {
+          title: c => c[0].label,
+          label: c => ` Youngest: ${c.raw[0]} · Oldest: ${c.raw[1]}`
+        }}
+      },
+      scales: {
+        x: {
+          min: 15, max: 45,
+          grid: { color: 'rgba(255,255,255,.05)' },
+          ticks: { color: '#7aaccf', font: { size: 10 }, callback: v => v + ' yrs' },
+          border: { color: 'rgba(255,255,255,.08)' }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e8f4fd', font: { size: 10 }, padding: 6 }, border: { display: false } }
+      }
+    }
+  });
+
+  /* Confederation legend for squad age */
+  (function() {
+    const sec = document.getElementById('squad-age');
+    const leg = document.createElement('div');
+    leg.className = 'chart-legend'; leg.style.cssText = 'margin-top:16px;grid-column:1/-1';
+    leg.innerHTML = Object.entries(CONF_COLORS).map(([k,v]) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${v}"></div>${k}</div>`
+    ).join('');
+    sec.querySelector('.charts-grid').after(leg);
+  })();
+
+  /* ══════════════════════════════════════════
+     SECTION 13 — Player Market Value
+  ══════════════════════════════════════════ */
+  const topPlayers = [
+    {name:'Lamine Yamal',team:'Spain',pos:'FWD',mv:200.0},
+    {name:'Erling Haaland',team:'Norway',pos:'FWD',mv:200.0},
+    {name:'Kylian Mbappé',team:'France',pos:'FWD',mv:180.0},
+    {name:'Pedro Pedri',team:'Spain',pos:'MID',mv:150.0},
+    {name:'Michael Olise',team:'France',pos:'FWD',mv:150.0},
+    {name:'Marcos Senesi',team:'Argentina',pos:'DEF',mv:140.8},
+    {name:'João Neves',team:'Portugal',pos:'MID',mv:140.0},
+    {name:'Vitinha',team:'Portugal',pos:'MID',mv:140.0},
+    {name:'Jude Bellingham',team:'England',pos:'MID',mv:130.0},
+    {name:'Désiré Doué',team:'France',pos:'FWD',mv:120.0},
+    {name:'Declan Rice',team:'England',pos:'MID',mv:120.0},
+    {name:'Daniel Olmo',team:'Spain',pos:'FWD',mv:118.4},
+    {name:'Bukayo Saka',team:'England',pos:'FWD',mv:110.0},
+    {name:'Victor Munoz',team:'Spain',pos:'FWD',mv:109.7},
+    {name:'Unai Simón',team:'Spain',pos:'GK',mv:108.5}
+  ];
+  const posColors = {FWD:'rgba(232,52,60,0.85)', MID:'rgba(74,144,217,0.85)', DEF:'rgba(0,201,167,0.85)', GK:'rgba(255,184,28,0.85)'};
+
+  new Chart(document.getElementById('playerMvChart'), {
+    type: 'bar', plugins: [hBar3D],
+    data: {
+      labels: topPlayers.map(p => p.name),
+      datasets: [{
+        label: 'Market Value (€M)',
+        data: topPlayers.map(p => p.mv),
+        backgroundColor: topPlayers.map(p => posColors[p.pos] || '#888'),
+        borderRadius: 3, borderSkipped: false, barThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: {
+          title: c => c[0].label,
+          label: c => ` €${c.parsed.x}M  ·  ${topPlayers[c.dataIndex].team}  ·  ${topPlayers[c.dataIndex].pos}`
+        }}
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.05)' },
+          ticks: { color: '#7aaccf', font: { size: 11 }, callback: v => '€' + v + 'M' },
+          border: { color: 'rgba(255,255,255,.08)' }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e8f4fd', font: { size: 11 }, padding: 8 }, border: { display: false } }
+      }
+    }
+  });
+
+  const teamMvData = [
+    {team:'Spain',conf:'UEFA',total:2134.2},{team:'France',conf:'UEFA',total:1546.2},
+    {team:'England',conf:'UEFA',total:1321.8},{team:'Portugal',conf:'UEFA',total:1145.9},
+    {team:'Argentina',conf:'CONMEBOL',total:1025.0},{team:'Germany',conf:'UEFA',total:988.7},
+    {team:'Brazil',conf:'CONMEBOL',total:893.2},{team:'Netherlands',conf:'UEFA',total:765.2},
+    {team:'Belgium',conf:'UEFA',total:634.1},{team:"Côte d'Ivoire",conf:'CAF',total:494.8},
+    {team:'Norway',conf:'UEFA',total:465.1},{team:'Türkiye',conf:'UEFA',total:461.2},
+    {team:'Colombia',conf:'CONMEBOL',total:460.9},{team:'Morocco',conf:'CAF',total:456.8},
+    {team:'Senegal',conf:'CAF',total:456.3},{team:'Mexico',conf:'CONCACAF',total:411.9},
+    {team:'Sweden',conf:'UEFA',total:408.5},{team:'Croatia',conf:'UEFA',total:387.3},
+    {team:'USA',conf:'CONCACAF',total:386.6},{team:'Switzerland',conf:'UEFA',total:357.2}
+  ];
+
+  new Chart(document.getElementById('teamMvChart'), {
+    type: 'bar', plugins: [hBar3D],
+    data: {
+      labels: teamMvData.map(d => d.team),
+      datasets: [{
+        label: 'Total Squad Value (€M)',
+        data: teamMvData.map(d => d.total),
+        backgroundColor: teamMvData.map(d => (CONF_COLORS[d.conf] || '#888') + 'dd'),
+        borderRadius: 3, borderSkipped: false, barThickness: 18
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...TOOLTIP, callbacks: {
+          title: c => c[0].label,
+          label: c => ` Total: €${c.parsed.x}M  [${teamMvData[c.dataIndex].conf}]`
+        }}
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.05)' },
+          ticks: { color: '#7aaccf', font: { size: 11 }, callback: v => '€' + v + 'M' },
+          border: { color: 'rgba(255,255,255,.08)' }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e8f4fd', font: { size: 11 }, padding: 8 }, border: { display: false } }
+      }
+    }
+  });
+
+  /* Position legend for market value chart */
+  (function() {
+    const sec = document.getElementById('market-value');
+    const leg = document.createElement('div');
+    leg.className = 'chart-legend'; leg.style.cssText = 'margin-top:16px;grid-column:1/-1';
+    leg.innerHTML = Object.entries(posColors).map(([k,v]) =>
+      `<div class="legend-item"><div class="legend-dot" style="background:${v}"></div>${k}</div>`
+    ).join('');
+    sec.querySelector('.charts-grid').after(leg);
+  })();
   (function(){
     const section = document.getElementById('ranking');
     const leg = document.createElement('div');
