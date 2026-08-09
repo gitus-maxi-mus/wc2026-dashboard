@@ -995,79 +995,88 @@
     canvas.width  = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
-    const cx  = size / 2, cy = size / 2, r = size / 2 - 1;
     ctx.clearRect(0, 0, size, size);
 
-    /* white ball base */
+    const cx = size / 2, cy = size / 2;
+    const r  = size / 2 - size * 0.025;
+
+    /* white ball with radial depth shading */
+    const base = ctx.createRadialGradient(cx - r*0.25, cy - r*0.28, 0, cx, cy, r);
+    base.addColorStop(0,   '#ffffff');
+    base.addColorStop(0.7, '#e8e8e8');
+    base.addColorStop(1,   '#b0b0b0');
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = base;
+    ctx.fill();
+
+    /* clip patches inside ball circle */
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fill();
-
-    /* subtle 3-D shading */
-    const shine = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.05, cx, cy, r);
-    shine.addColorStop(0, 'rgba(255,255,255,0.55)');
-    shine.addColorStop(0.6, 'rgba(255,255,255,0)');
-    shine.addColorStop(1, 'rgba(0,0,0,0.22)');
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = shine;
-    ctx.fill();
-
-    /* clip all patch drawing to the ball */
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
 
-    /* rotate the whole pattern around the centre */
+    /* apply spin rotation */
     ctx.translate(cx, cy);
     ctx.rotate(spin);
     ctx.translate(-cx, -cy);
 
-    /* draw classic football patches:
-       1 central pentagon + 5 surrounding pentagons projected onto sphere */
-    const PR = r * 0.28; /* pentagon "radius" */
+    /* Pentagon dimensions — sized so white hexagonal gaps are clearly visible */
+    const PR = r * 0.21;   /* pentagon circumradius  */
+    const D  = r * 0.515;  /* centre → outer patch   */
 
-    function pentagon(ox, oy, pr, rotDeg) {
+    function pentagon(px, py, rot) {
       ctx.beginPath();
       for (let i = 0; i < 5; i++) {
-        const a = (Math.PI * 2 * i / 5) + (rotDeg * Math.PI / 180) - Math.PI / 2;
-        const px = ox + pr * Math.cos(a);
-        const py = oy + pr * Math.sin(a);
-        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        const a = rot + i * (2 * Math.PI / 5);
+        i === 0
+          ? ctx.moveTo(px + PR * Math.cos(a), py + PR * Math.sin(a))
+          : ctx.lineTo(px + PR * Math.cos(a), py + PR * Math.sin(a));
       }
       ctx.closePath();
-    }
-
-    const patches = [
-      { ox: cx,                   oy: cy,                   rot: 0 },
-      { ox: cx,                   oy: cy - r * 0.54,        rot: 0 },
-      { ox: cx + r * 0.51,        oy: cy - r * 0.17,        rot: 72 },
-      { ox: cx + r * 0.32,        oy: cy + r * 0.44,        rot: 144 },
-      { ox: cx - r * 0.32,        oy: cy + r * 0.44,        rot: 216 },
-      { ox: cx - r * 0.51,        oy: cy - r * 0.17,        rot: 288 },
-    ];
-
-    patches.forEach(p => {
-      pentagon(p.ox, p.oy, PR, p.rot);
       ctx.fillStyle   = '#111';
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth   = size * 0.012;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth   = Math.max(1, size * 0.013);
       ctx.fill();
       ctx.stroke();
-    });
+    }
 
+    /* Centre pentagon — one vertex pointing straight up */
+    pentagon(cx, cy, -Math.PI / 2);
+
+    /* 5 outer pentagons.
+       Each positioned at angle theta around the centre.
+       rot = theta means the edge midpoint at (theta + π) faces the centre —
+       giving a flat edge toward centre, matching the classic Telstar pattern. */
+    for (let i = 0; i < 5; i++) {
+      const theta = -Math.PI / 2 + i * (2 * Math.PI / 5);
+      pentagon(
+        cx + D * Math.cos(theta),
+        cy + D * Math.sin(theta),
+        theta
+      );
+    }
+
+    ctx.restore();
+
+    /* specular highlight — top-left gloss */
+    const shine = ctx.createRadialGradient(cx - r*0.28, cy - r*0.32, 0, cx - r*0.28, cy - r*0.32, r * 0.55);
+    shine.addColorStop(0, 'rgba(255,255,255,0.55)');
+    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = shine;
+    ctx.fillRect(0, 0, size, size);
     ctx.restore();
 
     /* outer border */
-    ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth   = size * 0.018;
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth   = size * 0.022;
     ctx.stroke();
-    ctx.restore();
   }
 
   /* ── Intro animation ── */
