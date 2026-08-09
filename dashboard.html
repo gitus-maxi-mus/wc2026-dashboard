@@ -464,6 +464,16 @@
   <a href="#stages">Stages</a>
   <span class="nav-sep">·</span>
   <a href="#venues">Venues</a>
+  <span class="nav-sep">·</span>
+  <a href="#goal-timing">Goal Timing</a>
+  <span class="nav-sep">·</span>
+  <a href="#conversion">Shot Conversion</a>
+  <span class="nav-sep">·</span>
+  <a href="#disciplinary">Disciplinary</a>
+  <span class="nav-sep">·</span>
+  <a href="#potm">Player of Match</a>
+  <span class="nav-sep">·</span>
+  <a href="#ranking">FIFA Ranking</a>
 </nav>
 
 <main class="main">
@@ -579,6 +589,75 @@
           <div class="legend-item"><div class="legend-dot" style="background:#FFB81C;border-radius:50%"></div>Total Goals</div>
           <div class="legend-item"><div class="legend-dot" style="background:#a78bfa;border-radius:50%"></div>Matches Played</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7: Goals by Minute Interval ── -->
+  <section class="section fade-in fade-in-7" id="goal-timing">
+    <p class="section-title">Goal Timing</p>
+    <div class="charts-grid">
+      <div class="chart-card" style="--chart-stripe:#ff8c42">
+        <p class="chart-card-title">Goals by 15-Minute Interval</p>
+        <p class="chart-card-sub">When are goals most likely across the full tournament? &nbsp;·&nbsp; source: match_events.csv</p>
+        <div class="chart-wrap" style="height:320px"><canvas id="goalTimingChart"></canvas></div>
+      </div>
+      <div class="chart-card" style="--chart-stripe:#a78bfa">
+        <p class="chart-card-title">Goal Timing — Polar View</p>
+        <p class="chart-card-sub">Each segment = one 15-min period &nbsp;·&nbsp; arc size = goals scored</p>
+        <div class="chart-wrap" style="height:320px"><canvas id="goalPolarChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8: Shot Conversion Rate ── -->
+  <section class="section fade-in fade-in-7" id="conversion">
+    <p class="section-title">Shot Conversion Rate</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#00c9a7">
+        <p class="chart-card-title">Goals ÷ Shots on Target — Top 15 Most Clinical Teams</p>
+        <p class="chart-card-sub">Higher % = more clinical in front of goal &nbsp;·&nbsp; source: match_team_stats.csv + player_stats.csv</p>
+        <div class="chart-wrap" style="height:400px"><canvas id="conversionChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 9: Disciplinary Records ── -->
+  <section class="section fade-in fade-in-8" id="disciplinary">
+    <p class="section-title">Disciplinary Records</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#e8343c">
+        <p class="chart-card-title">Yellow &amp; Red Cards by Team — Top 12</p>
+        <p class="chart-card-sub">source: player_stats.csv</p>
+        <div class="chart-wrap" style="height:380px"><canvas id="discChart"></canvas></div>
+        <div class="chart-legend" style="margin-top:14px">
+          <div class="legend-item"><div class="legend-dot" style="background:#FFB81C"></div>Yellow Cards</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e8343c"></div>Red Cards</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10: Player of the Match ── -->
+  <section class="section fade-in fade-in-8" id="potm">
+    <p class="section-title">Player of the Match</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#4a90d9">
+        <p class="chart-card-title">Most Player of the Match Awards — Top 10</p>
+        <p class="chart-card-sub">source: matches_detailed.csv</p>
+        <div class="chart-wrap" style="height:340px"><canvas id="potmChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 11: FIFA Ranking vs Stage ── -->
+  <section class="section fade-in fade-in-8" id="ranking">
+    <p class="section-title">FIFA Ranking vs Tournament Stage</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#FFB81C">
+        <p class="chart-card-title">Pre-Tournament FIFA Ranking vs Stage Reached</p>
+        <p class="chart-card-sub">Lower ranking number = higher-ranked team &nbsp;·&nbsp; Upsets sit above the trend &nbsp;·&nbsp; source: teams.csv + matches_detailed.csv</p>
+        <div class="chart-wrap" style="height:480px"><canvas id="rankingChart"></canvas></div>
       </div>
     </div>
   </section>
@@ -996,87 +1075,81 @@
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, size, size);
+    const cx = size/2, cy = size/2, r = size/2 - size*0.02;
 
-    const cx = size / 2, cy = size / 2;
-    const r  = size / 2 - size * 0.025;
+    /* ── 1. Base sphere gradient (white→grey) ── */
+    const baseGrd = ctx.createRadialGradient(cx-r*0.3, cy-r*0.35, r*0.05, cx+r*0.1, cy+r*0.1, r*1.05);
+    baseGrd.addColorStop(0,   '#ffffff');
+    baseGrd.addColorStop(0.5, '#e0e0e0');
+    baseGrd.addColorStop(1,   '#9a9a9a');
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle = baseGrd; ctx.fill();
 
-    /* white ball with radial depth shading */
-    const base = ctx.createRadialGradient(cx - r*0.25, cy - r*0.28, 0, cx, cy, r);
-    base.addColorStop(0,   '#ffffff');
-    base.addColorStop(0.7, '#e8e8e8');
-    base.addColorStop(1,   '#b0b0b0');
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = base;
-    ctx.fill();
-
-    /* clip patches inside ball circle */
+    /* ── 2. Clip + spin ── */
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.clip();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+    ctx.translate(cx,cy); ctx.rotate(spin); ctx.translate(-cx,-cy);
 
-    /* apply spin rotation */
-    ctx.translate(cx, cy);
-    ctx.rotate(spin);
-    ctx.translate(-cx, -cy);
+    /* Classic Telstar 32-panel: 12 black pentagons on sphere projection.
+       We draw the visible 6 (1 centre + 5 ring) to match the reference photo. */
+    const pR = r * 0.195;  /* pentagon circumradius — tight fit */
+    const pD = r * 0.488;  /* centre-to-centre distance to ring */
 
-    /* Pentagon dimensions — sized so white hexagonal gaps are clearly visible */
-    const PR = r * 0.21;   /* pentagon circumradius  */
-    const D  = r * 0.515;  /* centre → outer patch   */
-
-    function pentagon(px, py, rot) {
+    function drawPentagon(ox, oy, rotOffset) {
       ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = rot + i * (2 * Math.PI / 5);
-        i === 0
-          ? ctx.moveTo(px + PR * Math.cos(a), py + PR * Math.sin(a))
-          : ctx.lineTo(px + PR * Math.cos(a), py + PR * Math.sin(a));
+      for (let i=0; i<5; i++) {
+        const a = rotOffset + i*(2*Math.PI/5);
+        const px = ox + pR*Math.cos(a), py = oy + pR*Math.sin(a);
+        i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
       }
       ctx.closePath();
-      ctx.fillStyle   = '#111';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth   = Math.max(1, size * 0.013);
-      ctx.fill();
-      ctx.stroke();
+      /* dark panel with subtle inward gradient */
+      const pg = ctx.createRadialGradient(ox,oy,0,ox,oy,pR);
+      pg.addColorStop(0,'#2a2a2a');
+      pg.addColorStop(1,'#0a0a0a');
+      ctx.fillStyle = pg; ctx.fill();
+      ctx.strokeStyle='#555'; ctx.lineWidth=Math.max(0.5,size*0.008); ctx.stroke();
     }
 
-    /* Centre pentagon — one vertex pointing straight up */
-    pentagon(cx, cy, -Math.PI / 2);
+    /* Centre pentagon: flat edge at top → rotate so vertex points up */
+    drawPentagon(cx, cy, -Math.PI/2);
 
-    /* 5 outer pentagons.
-       Each positioned at angle theta around the centre.
-       rot = theta means the edge midpoint at (theta + π) faces the centre —
-       giving a flat edge toward centre, matching the classic Telstar pattern. */
-    for (let i = 0; i < 5; i++) {
-      const theta = -Math.PI / 2 + i * (2 * Math.PI / 5);
-      pentagon(
-        cx + D * Math.cos(theta),
-        cy + D * Math.sin(theta),
-        theta
-      );
+    /* 5 ring pentagons — each rotated so the edge nearest the centre faces in */
+    for (let i=0; i<5; i++) {
+      const theta = -Math.PI/2 + i*(2*Math.PI/5);
+      /* each outer pentagon: vertex pointing outward, so rotate by theta+π/5 */
+      drawPentagon(cx+pD*Math.cos(theta), cy+pD*Math.sin(theta), theta+Math.PI/5);
     }
 
     ctx.restore();
 
-    /* specular highlight — top-left gloss */
-    const shine = ctx.createRadialGradient(cx - r*0.28, cy - r*0.32, 0, cx - r*0.28, cy - r*0.32, r * 0.55);
-    shine.addColorStop(0, 'rgba(255,255,255,0.55)');
-    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    /* ── 3. Seam lines between patches (white stitching effect) ── */
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.fillStyle = shine;
-    ctx.fillRect(0, 0, size, size);
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+    ctx.translate(cx,cy); ctx.rotate(spin); ctx.translate(-cx,-cy);
+    ctx.strokeStyle='rgba(255,255,255,0.18)';
+    ctx.lineWidth = Math.max(0.5, size*0.006);
+    /* draw thin white curves connecting pentagon centres */
+    for (let i=0; i<5; i++) {
+      const theta = -Math.PI/2 + i*(2*Math.PI/5);
+      const ox = cx+pD*Math.cos(theta), oy = cy+pD*Math.sin(theta);
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ox,oy); ctx.stroke();
+    }
     ctx.restore();
 
-    /* outer border */
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth   = size * 0.022;
-    ctx.stroke();
+    /* ── 4. Specular highlight ── */
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+    const shine = ctx.createRadialGradient(cx-r*0.32,cy-r*0.36,0,cx-r*0.1,cy-r*0.1,r*0.72);
+    shine.addColorStop(0,'rgba(255,255,255,0.62)');
+    shine.addColorStop(0.4,'rgba(255,255,255,0.18)');
+    shine.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=shine; ctx.fillRect(0,0,size,size);
+    ctx.restore();
+
+    /* ── 5. Outer border ── */
+    ctx.beginPath(); ctx.arc(cx,cy,r-size*0.005,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=size*0.025; ctx.stroke();
   }
 
   /* ── Intro animation ── */
@@ -1153,6 +1226,321 @@
     }
 
     requestAnimationFrame(frame);
+  })();
+
+  /* ══════════════════════════════════════════
+     SECTION 7 — Goal Timing
+  ══════════════════════════════════════════ */
+  const timingLabels = ['0–15','16–30','31–45','46–60','61–75','76–90','90+'];
+  const timingGoals  = [39, 34, 55, 52, 42, 78, 8];
+  const timingColors = [
+    'rgba(74,144,217,0.85)',  'rgba(74,144,217,0.75)',
+    'rgba(255,184,28,0.85)',  'rgba(255,140,66,0.85)',
+    'rgba(255,140,66,0.75)',  'rgba(232,52,60,0.90)',
+    'rgba(167,139,250,0.85)'
+  ];
+
+  /* vertical 3D bar plugin for timing chart */
+  const vBar3D = {
+    id:'vBar3D',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i) => {
+        const hw = (bar.width||40)/2, top = bar.y, x = bar.x;
+        const col = Array.isArray(chart.data.datasets[0].backgroundColor)
+          ? chart.data.datasets[0].backgroundColor[i]
+          : chart.data.datasets[0].backgroundColor;
+        const DX=8, DY=-6;
+        ctx.beginPath();
+        ctx.moveTo(x-hw,top); ctx.lineTo(x-hw+DX,top+DY);
+        ctx.lineTo(x+hw+DX,top+DY); ctx.lineTo(x+hw,top);
+        ctx.closePath(); ctx.fillStyle=shadeColor(col,1.55); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x+hw,top); ctx.lineTo(x+hw+DX,top+DY);
+        ctx.lineTo(x+hw+DX,bar.base+DY); ctx.lineTo(x+hw,bar.base);
+        ctx.closePath(); ctx.fillStyle=shadeColor(col,0.5); ctx.fill();
+      });
+    }
+  };
+
+  new Chart(document.getElementById('goalTimingChart'),{
+    type:'bar', plugins:[vBar3D],
+    data:{labels:timingLabels, datasets:[{
+      label:'Goals', data:timingGoals,
+      backgroundColor:timingColors,
+      borderRadius:4, borderSkipped:false, barThickness:44
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:800, delay:ctx=>ctx.dataIndex*90, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>`Minute ${c[0].label}`, label:c=>` Goals: ${c.parsed.y}`
+      }}},
+      scales:{
+        x:{grid:{display:false}, ticks:{color:'#e8f4fd',font:{size:12}}, border:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'#7aaccf',font:{size:11}},
+           border:{color:'rgba(255,255,255,.08)'},
+           title:{display:true,text:'Goals',color:'#7aaccf',font:{size:11}}}
+      }
+    }
+  });
+
+  new Chart(document.getElementById('goalPolarChart'),{
+    type:'polarArea',
+    data:{labels:timingLabels, datasets:[{
+      data:timingGoals,
+      backgroundColor:timingColors,
+      borderColor:timingColors.map(c=>c.replace(/[\d.]+\)$/,'1)')),
+      borderWidth:1.5
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:1000, easing:'easeOutQuart'},
+      plugins:{
+        legend:{position:'right', labels:{color:'#a0c4e0',font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{...TOOLTIP,callbacks:{
+          title:c=>`Minute ${c[0].label}`, label:c=>` Goals: ${c.parsed.r}`
+        }}
+      },
+      scales:{r:{ticks:{color:'#7aaccf',font:{size:10},backdropColor:'transparent'},
+        grid:{color:'rgba(255,255,255,.08)'}, angleLines:{color:'rgba(255,255,255,.08)'}}}
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     SECTION 8 — Shot Conversion
+  ══════════════════════════════════════════ */
+  const convData = [
+    {team:'Austria',goals:6,sot:8,rate:75.0},
+    {team:'USA',goals:11,sot:18,rate:61.1},
+    {team:'Norway',goals:13,sot:27,rate:48.1},
+    {team:'Netherlands',goals:11,sot:23,rate:47.8},
+    {team:'Mexico',goals:10,sot:21,rate:47.6},
+    {team:'Japan',goals:8,sot:17,rate:47.1},
+    {team:'Portugal',goals:8,sot:17,rate:47.1},
+    {team:'Senegal',goals:10,sot:23,rate:43.5},
+    {team:'Morocco',goals:11,sot:27,rate:40.7},
+    {team:'Ghana',goals:2,sot:5,rate:40.0},
+    {team:'Argentina',goals:19,sot:49,rate:38.8},
+    {team:'Spain',goals:14,sot:37,rate:37.8},
+    {team:'England',goals:20,sot:55,rate:36.4},
+    {team:'France',goals:20,sot:56,rate:35.7},
+    {team:'Belgium',goals:14,sot:40,rate:35.0}
+  ];
+
+  new Chart(document.getElementById('conversionChart'),{
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels: convData.map(d=>d.team),
+      datasets:[{
+        label:'Conversion %',
+        data: convData.map(d=>d.rate),
+        backgroundColor: convData.map((d,i)=>{
+          const g = Math.round(180 - i*8);
+          return `rgba(0,${g},167,0.85)`;
+        }),
+        borderRadius:3, borderSkipped:false, barThickness:20
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:700, delay:wfDelay, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>c[0].label,
+        label:c=>` ${c.parsed.x}% (${convData[c.dataIndex].goals}G / ${convData[c.dataIndex].sot} SoT)`
+      }}},
+      scales:{
+        x:{max:80, grid:{color:'rgba(255,255,255,.05)'},
+           ticks:{color:'#7aaccf',font:{size:11},callback:v=>v+'%'},
+           border:{color:'rgba(255,255,255,.08)'}},
+        y:{grid:{display:false}, ticks:{color:'#e8f4fd',font:{size:11},padding:8}, border:{display:false}}
+      }
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     SECTION 9 — Disciplinary
+  ══════════════════════════════════════════ */
+  const discData = [
+    {team:'Australia',yellow:5,red:0},
+    {team:'USA',yellow:3,red:1},
+    {team:'Haiti',yellow:3,red:0},
+    {team:'Saudi Arabia',yellow:3,red:0},
+    {team:'South Africa',yellow:2,red:2},
+    {team:'Qatar',yellow:1,red:2},
+    {team:'Mexico',yellow:2,red:1},
+    {team:'Iraq',yellow:2,red:1},
+    {team:'Senegal',yellow:2,red:0},
+    {team:'Bosnia & Herz.',yellow:1,red:1},
+    {team:'Paraguay',yellow:1,red:1},
+    {team:'Belgium',yellow:1,red:1}
+  ];
+
+  new Chart(document.getElementById('discChart'),{
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels: discData.map(d=>d.team),
+      datasets:[
+        {label:'Yellow Cards', data:discData.map(d=>d.yellow),
+         backgroundColor:'rgba(255,184,28,0.88)', borderRadius:0,
+         borderSkipped:false, barThickness:20, stack:'disc'},
+        {label:'Red Cards', data:discData.map(d=>d.red),
+         backgroundColor:'rgba(232,52,60,0.85)', borderRadius:3,
+         borderSkipped:false, barThickness:20, stack:'disc'}
+      ]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:700, delay:wfDelay, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>c[0].label,
+        label:c=>` ${c.dataset.label}: ${c.parsed.x}`
+      }}},
+      scales:{
+        x:{stacked:true, max:8, grid:{color:'rgba(255,255,255,.05)'},
+           ticks:{color:'#7aaccf',font:{size:11},stepSize:1},
+           border:{color:'rgba(255,255,255,.08)'}},
+        y:{stacked:true, grid:{display:false},
+           ticks:{color:'#e8f4fd',font:{size:11},padding:8}, border:{display:false}}
+      }
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     SECTION 10 — Player of the Match
+  ══════════════════════════════════════════ */
+  const potmLabels = ['Messi','Oyarzabal','Haaland','Mbappé','Bellingham','Vozinha','Quiñones','Balogun','Vinicius','Rezaeian'];
+  const potmVals   = [7,4,3,3,3,3,2,2,2,2];
+
+  new Chart(document.getElementById('potmChart'),{
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels:potmLabels,
+      datasets:[{
+        label:'POTM Awards',
+        data:potmVals,
+        backgroundColor:potmVals.map((_,i)=>`rgba(74,144,217,${Math.max(0.45,0.92-i*0.05)})`),
+        borderRadius:3, borderSkipped:false, barThickness:26
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:700, delay:wfDelay, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>c[0].label, label:c=>` POTM Awards: ${c.parsed.x}`
+      }}},
+      scales:{
+        x:{max:8, grid:{color:'rgba(255,255,255,.05)'},
+           ticks:{color:'#7aaccf',font:{size:12},stepSize:1},
+           border:{color:'rgba(255,255,255,.08)'}},
+        y:{grid:{display:false}, ticks:{color:'#e8f4fd',font:{size:12},padding:8}, border:{display:false}}
+      }
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     SECTION 11 — FIFA Ranking vs Stage
+     Scatter: x=ranking, y=stage, bubble=team
+     Lower x & higher y = overperformer
+  ══════════════════════════════════════════ */
+  const rankingData = [
+    {team:'Argentina',ranking:1,stage:7},{team:'Spain',ranking:2,stage:7},
+    {team:'France',ranking:3,stage:6},{team:'England',ranking:4,stage:6},
+    {team:'Portugal',ranking:5,stage:3},{team:'Brazil',ranking:6,stage:3},
+    {team:'Morocco',ranking:7,stage:4},{team:'Netherlands',ranking:8,stage:2},
+    {team:'Belgium',ranking:9,stage:4},{team:'Germany',ranking:10,stage:2},
+    {team:'Croatia',ranking:11,stage:2},{team:'Colombia',ranking:13,stage:3},
+    {team:'Mexico',ranking:14,stage:3},{team:'Senegal',ranking:15,stage:2},
+    {team:'Uruguay',ranking:16,stage:1},{team:'USA',ranking:17,stage:3},
+    {team:'Japan',ranking:18,stage:2},{team:'Switzerland',ranking:19,stage:4},
+    {team:'South Korea',ranking:22,stage:1},{team:'Ecuador',ranking:23,stage:2},
+    {team:'Austria',ranking:24,stage:2},{team:'Sweden',ranking:25,stage:2},
+    {team:'Canada',ranking:33,stage:3},{team:'Egypt',ranking:36,stage:3},
+    {team:'Norway',ranking:37,stage:5}
+  ];
+  const stageLabels = ['','Group Stage','Round of 32','Round of 16','Quarter-finals','Semi-finals','3rd Place','Final'];
+
+  /* colour by how much they over/underperformed vs ranking */
+  const rankingColors = rankingData.map(d => {
+    const expected = Math.max(1, Math.round(8 - d.ranking/6));
+    const diff = d.stage - expected;
+    if (diff >= 2)  return 'rgba(0,201,167,0.85)';
+    if (diff >= 1)  return 'rgba(255,184,28,0.85)';
+    if (diff === 0) return 'rgba(74,144,217,0.80)';
+    if (diff === -1)return 'rgba(255,140,66,0.80)';
+    return 'rgba(232,52,60,0.85)';
+  });
+
+  /* 3D bubble plugin reused */
+  const rankBubble3D = {
+    id:'rankBubble3D',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds,di) => {
+        const meta = chart.getDatasetMeta(di);
+        meta.data.forEach((pt,bi) => {
+          const r = 12, cx=pt.x, cy=pt.y;
+          const grd=ctx.createRadialGradient(cx-r*0.3,cy-r*0.3,r*0.05,cx,cy,r);
+          grd.addColorStop(0,'rgba(255,255,255,0.35)');
+          grd.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+          ctx.fillStyle=grd; ctx.fill();
+          ctx.save();
+          ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+          ctx.beginPath(); ctx.arc(cx+r*0.3,cy+r*0.3,r,0,Math.PI*2);
+          ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fill();
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  new Chart(document.getElementById('rankingChart'),{
+    type:'bubble', plugins:[rankBubble3D],
+    data:{datasets:[{
+      label:'Teams',
+      data: rankingData.map(d=>({x:d.ranking, y:d.stage, r:12, _t:d.team})),
+      backgroundColor: rankingColors,
+      borderColor: rankingColors.map(c=>c.replace(/[\d.]+\)$/,'1)')),
+      borderWidth:1.5
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:900, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>[c[0].raw._t],
+        label:c=>[` FIFA Ranking: #${c.raw.x}`, ` Stage: ${stageLabels[c.raw.y]}`]
+      }}},
+      scales:{
+        x:{min:0, max:50,
+           title:{display:true,text:'Pre-Tournament FIFA Ranking (lower = stronger)',color:'#7aaccf',font:{size:11}},
+           grid:{color:'rgba(255,255,255,.05)'},
+           ticks:{color:'#7aaccf',font:{size:11}},
+           border:{color:'rgba(255,255,255,.08)'}},
+        y:{min:0, max:8,
+           title:{display:true,text:'Stage Reached',color:'#7aaccf',font:{size:11}},
+           grid:{color:'rgba(255,255,255,.05)'},
+           ticks:{color:'#e8f4fd',font:{size:11},stepSize:1,
+             callback:v=>stageLabels[v]||''},
+           border:{color:'rgba(255,255,255,.08)'}}
+      }
+    }
+  });
+
+  /* Colour key for ranking chart */
+  (function(){
+    const section = document.getElementById('ranking');
+    const leg = document.createElement('div');
+    leg.className = 'chart-legend';
+    leg.style.marginTop='14px';
+    leg.innerHTML = `
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(0,201,167,0.85)"></div>Strong overperformer</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,184,28,0.85)"></div>Slight overperformer</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(74,144,217,0.80)"></div>As expected</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,140,66,0.80)"></div>Slight underperformer</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(232,52,60,0.85)"></div>Underperformer</div>`;
+    section.querySelector('.chart-card').appendChild(leg);
   })();
 </script>
 </body>
