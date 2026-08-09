@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FIFA World Cup 2026 — My Analysis Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:          #04101f;
+    --surface:     #071828;
+    --card:        #0b2040;
+    --border:      #153660;
+    --fifa-gold:   #FFB81C;
+    --fifa-blue:   #4a90d9;
+    --fifa-red:    #e8343c;
+    --fifa-teal:   #00c9a7;
+    --fifa-orange: #ff8c42;
+    --fifa-purple: #a78bfa;
+    --text:        #e8f4fd;
+    --muted:       #7aaccf;
+    --radius:      12px;
+    --nav-h:       52px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-bottom: 80px;
+  }
+
+  /* ── Page-load fade-in ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeUp .6s ease both; }
+  .fade-in-1 { animation-delay: .05s; }
+  .fade-in-2 { animation-delay: .15s; }
+  .fade-in-3 { animation-delay: .25s; }
+  .fade-in-4 { animation-delay: .35s; }
+  .fade-in-5 { animation-delay: .45s; }
+  .fade-in-6 { animation-delay: .55s; }
+  .fade-in-7 { animation-delay: .65s; }
+  .fade-in-8 { animation-delay: .75s; }
+
+  /* ── Sticky nav ── */
+  .sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(4,16,31,.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    padding: 0 40px;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .sticky-nav::-webkit-scrollbar { display: none; }
+  .sticky-nav a {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: color .2s, border-color .2s, background .2s;
+    white-space: nowrap;
+  }
+  .sticky-nav a:hover {
+    color: var(--fifa-gold);
+    border-color: rgba(255,184,28,.3);
+    background: rgba(255,184,28,.06);
+  }
+  .nav-sep {
+    color: var(--border);
+    font-size: 14px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    background: linear-gradient(135deg, #04101f 0%, #071e3d 50%, #04101f 100%);
+    border-bottom: 2px solid var(--fifa-gold);
+    padding: 40px 48px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .site-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 70% 50%, rgba(74,144,217,.10), transparent);
+    pointer-events: none;
+  }
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,184,28,.12);
+    border: 1px solid rgba(255,184,28,.4);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: var(--fifa-gold);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .site-header h1 {
+    font-size: clamp(20px, 3vw, 32px);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .site-header h1 span { color: var(--fifa-gold); }
+  .site-header .subtitle { color: var(--muted); font-size: 14px; }
+  .site-header .subtitle strong { color: var(--text); }
+
+  /* ── Layout ── */
+  .main { max-width: 1600px; margin: 0 auto; padding: 0 40px; }
+
+  .section { margin-top: 48px; }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── KPI tiles ── */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+  }
+  .tile {
+    background: linear-gradient(145deg, #0d2a4a, #071828);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 22px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+  }
+  .tile:hover {
+    border-color: var(--tile-accent, var(--fifa-gold));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255,184,28,.10);
+  }
+  .tile::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--tile-accent, var(--fifa-gold));
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .tile-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .tile-value {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -.03em;
+    color: var(--tile-accent, var(--fifa-gold));
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .tile-sub { font-size: 12px; color: #a0c4e0; }
+  .tile-sub strong { color: var(--text); }
+
+  .tile .match-score {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 4px; flex-wrap: wrap;
+  }
+  .tile .team { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+  .tile .team.right { text-align: right; }
+  .tile .score-box {
+    font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+    color: var(--tile-accent, var(--fifa-red));
+    background: rgba(232,52,60,.10);
+    border: 1px solid rgba(232,52,60,.3);
+    border-radius: 8px;
+    padding: 2px 10px;
+    white-space: nowrap;
+  }
+
+  /* ── Chart cards ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .chart-card {
+    background: linear-gradient(145deg, #0d2a4a, #071828);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 28px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--chart-stripe, var(--fifa-gold));
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .chart-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .chart-card-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .chart-wrap { position: relative; height: 340px; }
+
+  .chart-legend {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin-top: 14px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+  }
+
+  /* ── Stage timeline cards ── */
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+  }
+  .stage-card {
+    background: linear-gradient(145deg, #0d2a4a, #071828);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 16px 18px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, transform .2s;
+  }
+  .stage-card:hover {
+    border-color: var(--stage-color, var(--fifa-gold));
+    transform: translateY(-2px);
+  }
+  .stage-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--stage-color, var(--fifa-gold));
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .stage-bar-wrap {
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .stage-bar {
+    width: 36px;
+    border-radius: 4px 4px 0 0;
+    background: var(--stage-color, var(--fifa-gold));
+    opacity: 0.85;
+    transform-origin: bottom;
+    animation: growUp .8s var(--delay, 0s) ease both;
+  }
+  @keyframes growUp {
+    from { transform: scaleY(0); opacity: 0; }
+    to   { transform: scaleY(1); opacity: 0.85; }
+  }
+  .stage-name {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    line-height: 1.3;
+    min-height: 28px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stage-goals {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--stage-color, var(--fifa-gold));
+    letter-spacing: -.02em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stage-meta {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .stage-meta span {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ── Confederation legend cards ── */
+  .conf-legend-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(145deg, #0d2a4a, #071828);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    transition: border-color .2s;
+  }
+  .conf-legend-card:hover { border-color: var(--conf-color, var(--fifa-gold)); }
+  .conf-legend-left { display: flex; align-items: center; gap: 10px; }
+  .conf-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .conf-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .conf-teams { font-size: 11px; color: var(--muted); }
+  .conf-goals-val { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+  .conf-goals-label { font-size: 10px; color: var(--muted); text-align: right; }
+
+  /* ── Footer ── */
+  .site-footer {
+    margin-top: 72px;
+    border-top: 1px solid var(--border);
+    padding: 28px 40px;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .site-footer strong { color: var(--text); }
+  .site-footer a {
+    color: var(--fifa-blue);
+    text-decoration: none;
+  }
+  .site-footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .stage-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .tiles { grid-template-columns: repeat(3, 1fr); }
+    .main { padding: 0 20px; }
+    .sticky-nav { padding: 0 20px; }
+    .site-header { padding: 28px 20px 24px; }
+    .site-footer { padding: 24px 20px; }
+  }
+  @media (max-width: 640px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .stage-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-wrap { height: 280px !important; }
+    .main { padding: 0 14px; }
+    .sticky-nav { padding: 0 14px; gap: 2px; }
+    .sticky-nav a { padding: 5px 8px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="site-header fade-in fade-in-1">
+  <div class="header-badge">&#9917; Data Analysis</div>
+  <h1>FIFA World Cup <span>2026</span> — My Analysis Dashboard</h1>
+  <p class="subtitle">Prepared by <strong>PREETI</strong></p>
+</header>
+
+<!-- ── Sticky Nav ── -->
+<nav class="sticky-nav fade-in fade-in-2">
+  <a href="#snapshot">Snapshot</a>
+  <span class="nav-sep">·</span>
+  <a href="#scorers">Top Scorers</a>
+  <span class="nav-sep">·</span>
+  <a href="#contributors">Contributors</a>
+  <span class="nav-sep">·</span>
+  <a href="#team-perf">Team Performance</a>
+  <span class="nav-sep">·</span>
+  <a href="#confederation">Confederation</a>
+  <span class="nav-sep">·</span>
+  <a href="#stages">Stages</a>
+  <span class="nav-sep">·</span>
+  <a href="#venues">Venues</a>
+</nav>
+
+<main class="main">
+
+  <!-- ── 1: Tournament Snapshot ── -->
+  <section class="section fade-in fade-in-3" id="snapshot">
+    <p class="section-title">Tournament Snapshot</p>
+    <div class="tiles">
+      <div class="tile" style="--tile-accent:#FFB81C">
+        <p class="tile-label">Total Goals Scored</p>
+        <p class="tile-value">310</p>
+        <p class="tile-sub">Across all stages</p>
+      </div>
+      <div class="tile" style="--tile-accent:#4a90d9">
+        <p class="tile-label">Matches Played</p>
+        <p class="tile-value">104</p>
+        <p class="tile-sub">Group stage to Final</p>
+      </div>
+      <div class="tile" style="--tile-accent:#00c9a7">
+        <p class="tile-label">Participating Teams</p>
+        <p class="tile-value">48</p>
+        <p class="tile-sub">From 6 confederations</p>
+      </div>
+      <div class="tile" style="--tile-accent:#ff8c42">
+        <p class="tile-label">Avg Goals / Match</p>
+        <p class="tile-value">2.98</p>
+        <p class="tile-sub">Goals per match played</p>
+      </div>
+      <div class="tile" style="--tile-accent:#e8343c">
+        <p class="tile-label">Highest-Scoring Match</p>
+        <div class="match-score">
+          <span class="team">France</span>
+          <span class="score-box">4&ndash;6</span>
+          <span class="team right">England</span>
+        </div>
+        <p class="tile-sub" style="margin-top:8px">18 July 2026 &nbsp;|&nbsp; 10 goals</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2a: Top Goal Scorers ── -->
+  <section class="section fade-in fade-in-4" id="scorers">
+    <p class="section-title">Top Goal Scorers</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#FFB81C">
+        <p class="chart-card-title">Top 10 Players by Goals Scored</p>
+        <p class="chart-card-sub">All stages &nbsp;·&nbsp; source: player_stats.csv</p>
+        <div class="chart-wrap" style="height:360px"><canvas id="scorersChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2b: Top Contributors ── -->
+  <section class="section fade-in fade-in-4" id="contributors">
+    <p class="section-title">Top Contributors</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#4a90d9">
+        <p class="chart-card-title">Top 10 Players by Goals + Assists</p>
+        <p class="chart-card-sub">Goals and assists shown separately &nbsp;·&nbsp; source: player_stats.csv</p>
+        <div class="chart-wrap" style="height:360px"><canvas id="contributorsChart"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#FFB81C"></div>Goals</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4a90d9"></div>Assists</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3: Team Goal Performance ── -->
+  <section class="section fade-in fade-in-5" id="team-perf">
+    <p class="section-title">Team Goal Performance</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#00c9a7">
+        <p class="chart-card-title">Goals Scored vs Goals Conceded — All Teams</p>
+        <p class="chart-card-sub">Sorted by goal difference (best to worst) &nbsp;·&nbsp; Gold = scored, Red = conceded &nbsp;·&nbsp; source: matches_detailed.csv</p>
+        <div class="chart-wrap" style="height:960px"><canvas id="divergingChart"></canvas></div>
+        <div class="chart-legend" style="margin-top:16px">
+          <div class="legend-item"><div class="legend-dot" style="background:#FFB81C"></div>Goals Scored</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e8343c"></div>Goals Conceded</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4: Goals by Confederation ── -->
+  <section class="section fade-in fade-in-5" id="confederation">
+    <p class="section-title">Goals by Confederation</p>
+    <div class="charts-grid" style="align-items:center">
+      <div class="chart-card" style="--chart-stripe:#FFB81C">
+        <p class="chart-card-title">Total Goals by Confederation</p>
+        <p class="chart-card-sub">Source: player_stats.csv + teams.csv</p>
+        <div class="chart-wrap" style="height:380px"><canvas id="donutChart"></canvas></div>
+      </div>
+      <div><div id="confLegend"></div></div>
+    </div>
+  </section>
+
+  <!-- ── 5: Goals by Tournament Stage ── -->
+  <section class="section fade-in fade-in-6" id="stages">
+    <p class="section-title">Goals by Tournament Stage</p>
+    <div class="stage-grid" id="stageGrid"></div>
+  </section>
+
+  <!-- ── 6: Venue Performance ── -->
+  <section class="section fade-in fade-in-7" id="venues">
+    <p class="section-title">Venue Performance</p>
+    <div class="charts-grid" style="grid-template-columns:1fr">
+      <div class="chart-card" style="--chart-stripe:#a78bfa">
+        <p class="chart-card-title">Goals &amp; Matches by Host Venue</p>
+        <p class="chart-card-sub">Gold = total goals &nbsp;·&nbsp; Purple = matches played &nbsp;·&nbsp; source: matches_detailed.csv + venues.csv</p>
+        <div class="chart-wrap" style="height:440px"><canvas id="venueChart"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#FFB81C;border-radius:50%"></div>Total Goals</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a78bfa;border-radius:50%"></div>Matches Played</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Footer ── -->
+<footer class="site-footer fade-in fade-in-8">
+  <div>Prepared by <strong>PREETI</strong> &nbsp;|&nbsp; 9 August 2026</div>
+  <div>Data source: <a href="https://github.com/mominullptr/FIFA-World-Cup-2026-Dataset" target="_blank">FIFA World Cup 2026 Dataset on GitHub</a></div>
+</footer>
+
+<script>
+  /* ── Shared helpers ── */
+  function shadeColor(color, factor) {
+    let r, g, b;
+    if (typeof color === 'string' && color.startsWith('#')) {
+      r = parseInt(color.slice(1,3),16);
+      g = parseInt(color.slice(3,5),16);
+      b = parseInt(color.slice(5,7),16);
+    } else {
+      const m = (color||'').match(/\d+/g);
+      if (!m) return '#888';
+      [r,g,b] = m.map(Number);
+    }
+    const c = v => Math.max(0,Math.min(255,Math.round(v*factor)));
+    return `rgb(${c(r)},${c(g)},${c(b)})`;
+  }
+
+  const TOOLTIP = {
+    backgroundColor:'#0d2a4a', borderColor:'#153660', borderWidth:1,
+    titleColor:'#e8f4fd', bodyColor:'#a0c4e0', padding:12, cornerRadius:8
+  };
+
+  const wfDelay = ctx => ctx.type === 'data' ? ctx.dataIndex * 110 : 0;
+
+  /* ── Shared horizontal bar 3D plugin ── */
+  const hBar3D = {
+    id:'hBar3D',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds,di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach(bar => {
+          const w = bar.x - bar.base;
+          if (Math.abs(w) <= 1) return;
+          const x=bar.x, bx=bar.base, cy=bar.y, hh=(bar.height||16)/2;
+          const col = typeof ds.backgroundColor==='string'
+            ? ds.backgroundColor
+            : (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : '#888');
+          const DX = w>0 ? 8 : -8, DY = -5;
+          ctx.beginPath();
+          ctx.moveTo(bx,cy-hh); ctx.lineTo(bx+DX,cy-hh+DY);
+          ctx.lineTo(x+DX,cy-hh+DY); ctx.lineTo(x,cy-hh);
+          ctx.closePath(); ctx.fillStyle=shadeColor(col,1.5); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x,cy-hh); ctx.lineTo(x+DX,cy-hh+DY);
+          ctx.lineTo(x+DX,cy+hh+DY); ctx.lineTo(x,cy+hh);
+          ctx.closePath(); ctx.fillStyle=shadeColor(col,0.55); ctx.fill();
+        });
+      });
+    }
+  };
+
+  /* ══════════════════════════════════
+     SECTION 2a — Top Scorers
+  ══════════════════════════════════ */
+  new Chart(document.getElementById('scorersChart'), {
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels:['Mbappé (FRA)','Messi (ARG)','Haaland (NOR)','Bellingham (ENG)',
+              'Kane (ENG)','Oyarzabal (ESP)','Dembélé (FRA)',
+              'Quiñones (MEX)','Vinicius (BRA)','Barcola (FRA)'],
+      datasets:[{
+        label:'Goals',
+        data:[10,8,7,7,6,5,5,4,4,4],
+        backgroundColor:[10,8,7,7,6,5,5,4,4,4].map((_,i)=>`rgba(255,184,28,${Math.max(0.45,0.90-i*0.05)})`),
+        borderRadius:3, borderSkipped:false, barThickness:24
+      }]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:700, delay:wfDelay, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>c[0].label, label:c=>` Goals: ${c.parsed.x}`
+      }}},
+      scales:{
+        x:{max:12, grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'#7aaccf',font:{size:12}}, border:{color:'rgba(255,255,255,.08)'}},
+        y:{grid:{display:false}, ticks:{color:'#e8f4fd',font:{size:12},padding:8}, border:{display:false}}
+      }
+    }
+  });
+
+  /* ══════════════════════════════════
+     SECTION 2b — Top Contributors
+  ══════════════════════════════════ */
+  new Chart(document.getElementById('contributorsChart'), {
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels:['Mbappé (FRA)','Messi (ARG)','Olise (FRA)','Bellingham (ENG)',
+              'Dembélé (FRA)','Haaland (NOR)','Kane (ENG)',
+              'Oyarzabal (ESP)','Saka (ENG)','Quiñones (MEX)'],
+      datasets:[
+        {label:'Goals',   data:[10,8,0,7,5,7,6,5,3,4], backgroundColor:'rgba(255,184,28,0.88)',
+         borderRadius:0, borderSkipped:false, barThickness:24, stack:'c'},
+        {label:'Assists', data:[4,4,8,1,2,0,1,1,3,1],  backgroundColor:'rgba(74,144,217,0.82)',
+         borderRadius:3, borderSkipped:false, barThickness:24, stack:'c'}
+      ]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:700, delay:wfDelay, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>c[0].label, label:c=>` ${c.dataset.label}: ${c.parsed.x}`
+      }}},
+      scales:{
+        x:{max:16, stacked:true, grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'#7aaccf',font:{size:12}}, border:{color:'rgba(255,255,255,.08)'}},
+        y:{stacked:true, grid:{display:false}, ticks:{color:'#e8f4fd',font:{size:12},padding:8}, border:{display:false}}
+      }
+    }
+  });
+
+  /* ══════════════════════════════════
+     SECTION 3 — Diverging Bar
+     Both datasets share the SAME y-axis labels.
+     Scored = positive (right), Conceded = negative (left).
+     Sorted by goal difference descending.
+  ══════════════════════════════════ */
+  const rawTeams = [
+    {team:'Algeria',       scored:5,  conceded:9,  conf:'CAF'},
+    {team:'Argentina',     scored:21, conceded:8,  conf:'CONMEBOL'},
+    {team:'Australia',     scored:3,  conceded:3,  conf:'AFC'},
+    {team:'Austria',       scored:6,  conceded:9,  conf:'UEFA'},
+    {team:'Belgium',       scored:14, conceded:7,  conf:'UEFA'},
+    {team:'Bosnia & Herz.',scored:5,  conceded:8,  conf:'UEFA'},
+    {team:'Brazil',        scored:10, conceded:4,  conf:'CONMEBOL'},
+    {team:'Canada',        scored:9,  conceded:6,  conf:'CONCACAF'},
+    {team:"Côte d'Ivoire", scored:5,  conceded:4,  conf:'CAF'},
+    {team:'Congo DR',      scored:5,  conceded:5,  conf:'CAF'},
+    {team:'Colombia',      scored:5,  conceded:1,  conf:'CONMEBOL'},
+    {team:'Cabo Verde',    scored:4,  conceded:5,  conf:'CAF'},
+    {team:'Croatia',       scored:6,  conceded:7,  conf:'UEFA'},
+    {team:'Curaçao',       scored:1,  conceded:9,  conf:'CONCACAF'},
+    {team:'Czechia',       scored:2,  conceded:6,  conf:'UEFA'},
+    {team:'Ecuador',       scored:2,  conceded:4,  conf:'CONMEBOL'},
+    {team:'Egypt',         scored:8,  conceded:7,  conf:'CAF'},
+    {team:'England',       scored:20, conceded:12, conf:'UEFA'},
+    {team:'Spain',         scored:14, conceded:3,  conf:'UEFA'},
+    {team:'France',        scored:20, conceded:10, conf:'UEFA'},
+    {team:'Germany',       scored:11, conceded:5,  conf:'UEFA'},
+    {team:'Ghana',         scored:2,  conceded:3,  conf:'CAF'},
+    {team:'Haiti',         scored:2,  conceded:8,  conf:'CONCACAF'},
+    {team:'IR Iran',       scored:3,  conceded:3,  conf:'AFC'},
+    {team:'Iraq',          scored:1,  conceded:12, conf:'AFC'},
+    {team:'Jordan',        scored:3,  conceded:8,  conf:'AFC'},
+    {team:'Japan',         scored:8,  conceded:5,  conf:'AFC'},
+    {team:'South Korea',   scored:2,  conceded:3,  conf:'AFC'},
+    {team:'Saudi Arabia',  scored:1,  conceded:5,  conf:'AFC'},
+    {team:'Morocco',       scored:10, conceded:6,  conf:'CAF'},
+    {team:'Mexico',        scored:10, conceded:3,  conf:'CONCACAF'},
+    {team:'Netherlands',   scored:11, conceded:5,  conf:'UEFA'},
+    {team:'Norway',        scored:13, conceded:11, conf:'UEFA'},
+    {team:'New Zealand',   scored:4,  conceded:10, conf:'OFC'},
+    {team:'Paraguay',      scored:3,  conceded:6,  conf:'CONMEBOL'},
+    {team:'Portugal',      scored:8,  conceded:3,  conf:'UEFA'},
+    {team:'Qatar',         scored:2,  conceded:10, conf:'AFC'},
+    {team:'South Africa',  scored:2,  conceded:4,  conf:'CAF'},
+    {team:'Scotland',      scored:1,  conceded:4,  conf:'UEFA'},
+    {team:'Senegal',       scored:10, conceded:9,  conf:'CAF'},
+    {team:'Switzerland',   scored:10, conceded:6,  conf:'UEFA'},
+    {team:'Sweden',        scored:7,  conceded:10, conf:'UEFA'},
+    {team:'Tunisia',       scored:2,  conceded:12, conf:'CAF'},
+    {team:'Türkiye',       scored:3,  conceded:5,  conf:'UEFA'},
+    {team:'Uruguay',       scored:3,  conceded:4,  conf:'CONMEBOL'},
+    {team:'USA',           scored:11, conceded:8,  conf:'CONCACAF'},
+    {team:'Uzbekistan',    scored:2,  conceded:11, conf:'AFC'}
+  ];
+  rawTeams.sort((a,b) => (b.scored-b.conceded)-(a.scored-a.conceded));
+
+  const divLabels   = rawTeams.map(t=>t.team);
+  const divScored   = rawTeams.map(t=>t.scored);
+  const divConceded = rawTeams.map(t=>-t.conceded);
+
+  new Chart(document.getElementById('divergingChart'),{
+    type:'bar', plugins:[hBar3D],
+    data:{
+      labels: divLabels,
+      datasets:[
+        {label:'Goals Scored',   data:divScored,   backgroundColor:'rgba(255,184,28,0.82)',
+         borderRadius:3, borderSkipped:false, barThickness:16, stack:'div'},
+        {label:'Goals Conceded', data:divConceded, backgroundColor:'rgba(232,52,60,0.78)',
+         borderRadius:3, borderSkipped:false, barThickness:16, stack:'div'}
+      ]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      animation:{duration:600, delay:ctx=>ctx.dataIndex*12, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP, callbacks:{
+        title:c=>c[0].label,
+        label:c=>c.datasetIndex===0
+          ? ` Scored: ${c.parsed.x}`
+          : ` Conceded: ${Math.abs(c.parsed.x)}`
+      }}},
+      scales:{
+        x:{
+          stacked:true,
+          grid:{color:'rgba(255,255,255,.05)'},
+          ticks:{color:'#7aaccf', font:{size:11}, callback:v=>Math.abs(v)},
+          border:{color:'rgba(255,255,255,.08)'}
+        },
+        y:{
+          stacked:true,
+          grid:{display:false},
+          ticks:{color:'#e8f4fd', font:{size:11}, padding:6},
+          border:{display:false}
+        }
+      }
+    }
+  });
+
+  /* ══════════════════════════════════
+     SECTION 4 — 3D Doughnut
+  ══════════════════════════════════ */
+  const CONF_COLORS = {
+    UEFA:'#4a90d9', CONMEBOL:'#FFB81C', CONCACAF:'#e8343c',
+    CAF:'#00c9a7',  AFC:'#ff8c42',      OFC:'#a78bfa'
+  };
+  const confGoals      = {UEFA:151,CONMEBOL:42,CONCACAF:32,CAF:54,AFC:25,OFC:4};
+  const confTeamCounts = {UEFA:16, CONMEBOL:6, CONCACAF:6, CAF:9, AFC:8, OFC:1};
+  const confOrder  = ['UEFA','CONMEBOL','CAF','CONCACAF','AFC','OFC'];
+  const confColors = confOrder.map(c=>CONF_COLORS[c]);
+  const confValues = confOrder.map(c=>confGoals[c]);
+  const total      = confValues.reduce((a,b)=>a+b,0);
+
+  const donut3DPlugin = {
+    id:'donut3D',
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx, meta=chart.getDatasetMeta(0), depth=18;
+      meta.data.forEach((arc,i)=>{
+        const {startAngle,endAngle,innerRadius,outerRadius,x,y}=arc;
+        const mid=(startAngle+endAngle)/2, col=confColors[i];
+        if (Math.sin(mid)<-0.1) return;
+        const grad=ctx.createLinearGradient(
+          x+Math.cos(mid)*outerRadius, y+Math.sin(mid)*outerRadius,
+          x+Math.cos(mid)*outerRadius, y+Math.sin(mid)*outerRadius+depth
+        );
+        grad.addColorStop(0,shadeColor(col,0.7));
+        grad.addColorStop(1,shadeColor(col,0.35));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x,y,outerRadius,startAngle,endAngle);
+        ctx.arc(x,y+depth,outerRadius,endAngle,startAngle,true);
+        ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x,y,innerRadius,startAngle,endAngle);
+        ctx.arc(x,y+depth,innerRadius,endAngle,startAngle,true);
+        ctx.closePath(); ctx.fillStyle=shadeColor(col,0.45); ctx.fill();
+        ctx.restore();
+      });
+    }
+  };
+
+  new Chart(document.getElementById('donutChart'),{
+    type:'doughnut', plugins:[donut3DPlugin],
+    data:{
+      labels:confOrder,
+      datasets:[{data:confValues, backgroundColor:confColors.map(c=>c+'dd'),
+        borderColor:confColors, borderWidth:2, hoverOffset:14}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'52%',
+      animation:{animateRotate:true, duration:1100, easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        label:c=>` ${c.parsed} goals (${((c.parsed/total)*100).toFixed(1)}%)`
+      }}}
+    }
+  });
+
+  /* Build confederation legend */
+  const legendEl = document.getElementById('confLegend');
+  confOrder.forEach(conf=>{
+    const goals=confGoals[conf], pct=((goals/total)*100).toFixed(1), col=CONF_COLORS[conf];
+    const card=document.createElement('div');
+    card.className='conf-legend-card';
+    card.style.setProperty('--conf-color',col);
+    card.innerHTML=`
+      <div class="conf-legend-left">
+        <div class="conf-swatch" style="background:${col}"></div>
+        <div><div class="conf-name">${conf}</div><div class="conf-teams">${confTeamCounts[conf]} teams</div></div>
+      </div>
+      <div style="text-align:right">
+        <div class="conf-goals-val" style="color:${col}">${goals}</div>
+        <div class="conf-goals-label">${pct}% of goals</div>
+      </div>`;
+    legendEl.appendChild(card);
+  });
+
+  /* ══════════════════════════════════
+     SECTION 5 — Stage Timeline Cards
+     Each stage = one card with an animated bar, goal count, avg
+  ══════════════════════════════════ */
+  const stages = [
+    {name:'Group Stage',        goals:215, matches:72, color:'#FFB81C', delay:'0s'},
+    {name:'Round of 32',        goals:42,  matches:16, color:'#ff8c42', delay:'.08s'},
+    {name:'Round of 16',        goals:23,  matches:8,  color:'#4a90d9', delay:'.16s'},
+    {name:'Quarter-finals',     goals:12,  matches:4,  color:'#00c9a7', delay:'.24s'},
+    {name:'Semi-finals',        goals:5,   matches:2,  color:'#a78bfa', delay:'.32s'},
+    {name:'Third-place match',  goals:10,  matches:1,  color:'#e8343c', delay:'.40s'},
+    {name:'Final',              goals:3,   matches:1,  color:'#FFB81C', delay:'.48s'}
+  ];
+  const maxGoals = Math.max(...stages.map(s=>s.goals));
+  const grid = document.getElementById('stageGrid');
+  stages.forEach(s=>{
+    const barH = Math.round((s.goals/maxGoals)*80);
+    const avg  = (s.goals/s.matches).toFixed(2);
+    const card = document.createElement('div');
+    card.className='stage-card';
+    card.style.setProperty('--stage-color', s.color);
+    card.innerHTML=`
+      <div class="stage-name">${s.name}</div>
+      <div class="stage-bar-wrap">
+        <div class="stage-bar" style="height:${barH}px;background:${s.color};--delay:${s.delay}"></div>
+      </div>
+      <div class="stage-goals" style="color:${s.color}">${s.goals}</div>
+      <div class="stage-meta">goals in ${s.matches} match${s.matches>1?'es':''}
+        <span>${avg} per match</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  /* ══════════════════════════════════
+     SECTION 6 — Lollipop: Venues
+  ══════════════════════════════════ */
+  const rawVenues = [
+    {name:'Miami (Hard Rock)',       goals:29,matches:8},
+    {name:'Dallas (AT&T)',           goals:27,matches:9},
+    {name:'Kansas City (Arrowhead)',goals:27,matches:7},
+    {name:'Los Angeles (SoFi)',      goals:25,matches:8},
+    {name:'Vancouver (BC Place)',    goals:23,matches:6},
+    {name:'Boston (Gillette)',       goals:21,matches:7},
+    {name:'Houston (NRG)',           goals:20,matches:8},
+    {name:"San Francisco (Levi's)", goals:19,matches:7},
+    {name:'Atlanta (Mercedes-Benz)',goals:18,matches:8},
+    {name:'Philadelphia (Lincoln)', goals:17,matches:5},
+    {name:'Mexico City (Azteca)',   goals:16,matches:5},
+    {name:'Seattle (Lumen)',         goals:16,matches:8},
+    {name:'Toronto (BMO)',           goals:15,matches:5},
+    {name:'New York/NJ (MetLife)',  goals:15,matches:5},
+    {name:'Monterrey (BBVA)',        goals:13,matches:4},
+    {name:'Guadalajara (Akron)',     goals:9, matches:4}
+  ].sort((a,b)=>b.goals-a.goals);
+
+  const vLabels  = rawVenues.map(v=>v.name);
+  const vGoals   = rawVenues.map(v=>v.goals);
+  const vMatches = rawVenues.map(v=>v.matches);
+
+  const lollipopPlugin = {
+    id:'lollipop',
+    afterDatasetsDraw(chart){
+      const ctx=chart.ctx, xs=chart.scales.x, ys=chart.scales.y;
+      const meta0=chart.getDatasetMeta(0), meta1=chart.getDatasetMeta(1);
+      rawVenues.forEach((_,i)=>{
+        const x0=xs.getPixelForValue(0);
+        const yG=meta0.data[i]?meta0.data[i].y : ys.getPixelForValue(i-0.15);
+        const yM=meta1.data[i]?meta1.data[i].y : ys.getPixelForValue(i+0.15);
+        const xG=meta0.data[i]?meta0.data[i].x : xs.getPixelForValue(vGoals[i]);
+        const xM=meta1.data[i]?meta1.data[i].x : xs.getPixelForValue(vMatches[i]);
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(x0,yG); ctx.lineTo(xG,yG);
+        ctx.strokeStyle='rgba(255,184,28,0.45)'; ctx.lineWidth=2; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x0,yM); ctx.lineTo(xM,yM);
+        ctx.strokeStyle='rgba(167,139,250,0.45)'; ctx.lineWidth=2; ctx.stroke();
+        ctx.restore();
+      });
+    }
+  };
+
+  new Chart(document.getElementById('venueChart'),{
+    type:'scatter', plugins:[lollipopPlugin],
+    data:{
+      labels:vLabels,
+      datasets:[
+        {label:'Total Goals',   data:vGoals.map((g,i)=>({x:g,y:i-0.15})),
+         backgroundColor:'#FFB81C',borderColor:'#FFB81C',pointRadius:9,pointHoverRadius:12},
+        {label:'Matches Played',data:vMatches.map((m,i)=>({x:m,y:i+0.15})),
+         backgroundColor:'#a78bfa',borderColor:'#a78bfa',pointRadius:9,pointHoverRadius:12}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:900,easing:'easeOutQuart'},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP,callbacks:{
+        title:c=>vLabels[Math.round(c[0].raw.y)],
+        label:c=>c.datasetIndex===0?` Goals: ${c.raw.x}`:` Matches: ${c.raw.x}`
+      }}},
+      scales:{
+        x:{min:0,max:34, grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'#7aaccf',font:{size:11}}, border:{color:'rgba(255,255,255,.08)'}},
+        y:{min:-1,max:rawVenues.length, grid:{display:false}, border:{display:false},
+          ticks:{color:'#e8f4fd',font:{size:11},stepSize:1,callback:(v)=>{
+            const i=Math.round(v); return (i>=0&&i<vLabels.length)?vLabels[i]:'';
+          }}}
+      }
+    }
+  });
+</script>
+</body>
+</html>
