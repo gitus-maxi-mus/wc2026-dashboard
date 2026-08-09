@@ -1603,18 +1603,48 @@
 
   const ageConfColors = squadAgeData.map(d => CONF_COLORS[d.conf] || '#888');
 
+  /* inline label plugin — shows value at end of each bar */
+  const barValueLabels = {
+    id: 'barValueLabels',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((bar, i) => {
+          const raw = ds.data[i];
+          if (raw == null) return;
+          const isFloat = Array.isArray(raw);
+          const label = isFloat
+            ? `${raw[0]}–${raw[1]} yrs`
+            : (typeof raw === 'number' && raw >= 100 ? `€${raw.toFixed(0)}M` : (typeof raw === 'number' ? `${raw} yrs` : ''));
+          if (!label) return;
+          const x = bar.x + 5;
+          const y = bar.y;
+          ctx.save();
+          ctx.fillStyle = 'rgba(200,225,245,0.75)';
+          ctx.font = '10px Inter, sans-serif';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, x, y);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   new Chart(document.getElementById('squadAgeChart'), {
-    type: 'bar', plugins: [hBar3D],
+    type: 'bar', plugins: [barValueLabels],
     data: {
       labels: squadAgeData.map(d => d.team),
       datasets: [{
         label: 'Avg Age', data: squadAgeData.map(d => d.avg),
         backgroundColor: ageConfColors.map(c => c + 'dd'),
-        borderRadius: 3, borderSkipped: false, barThickness: 14
+        borderRadius: 4, borderSkipped: false, barThickness: 18
       }]
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
       animation: { duration: 600, delay: wfDelay, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
@@ -1637,20 +1667,21 @@
 
   /* Age range chart — floating bar (min→max) */
   new Chart(document.getElementById('ageRangeChart'), {
-    type: 'bar',
+    type: 'bar', plugins: [barValueLabels],
     data: {
       labels: squadAgeData.map(d => d.team),
       datasets: [{
         label: 'Age range',
         data: squadAgeData.map(d => [d.min, d.max]),
-        backgroundColor: ageConfColors.map(c => c + '99'),
+        backgroundColor: ageConfColors.map(c => c + 'aa'),
         borderColor:     ageConfColors,
-        borderWidth: 1,
-        borderSkipped: false, barThickness: 10
+        borderWidth: 1.5,
+        borderSkipped: false, barThickness: 14
       }]
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 90 } },
       animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
@@ -1704,19 +1735,69 @@
   ];
   const posColors = {FWD:'rgba(232,52,60,0.85)', MID:'rgba(74,144,217,0.85)', DEF:'rgba(0,201,167,0.85)', GK:'rgba(255,184,28,0.85)'};
 
+  /* shallow 3D plugin for market value charts (less blocky depth) */
+  const hBar3DShallow = {
+    id:'hBar3DShallow',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds,di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((bar,i) => {
+          const w = bar.x - bar.base;
+          if (Math.abs(w) <= 1) return;
+          const x=bar.x, bx=bar.base, cy=bar.y, hh=(bar.height||16)/2;
+          const col = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+          const DX=5, DY=-4;
+          ctx.beginPath();
+          ctx.moveTo(bx,cy-hh); ctx.lineTo(bx+DX,cy-hh+DY);
+          ctx.lineTo(x+DX,cy-hh+DY); ctx.lineTo(x,cy-hh);
+          ctx.closePath(); ctx.fillStyle=shadeColor(col,1.4); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x,cy-hh); ctx.lineTo(x+DX,cy-hh+DY);
+          ctx.lineTo(x+DX,cy+hh+DY); ctx.lineTo(x,cy+hh);
+          ctx.closePath(); ctx.fillStyle=shadeColor(col,0.6); ctx.fill();
+        });
+      });
+    }
+  };
+
+  /* value label plugin specific to market value (EUR formatting) */
+  const mvValueLabels = {
+    id: 'mvValueLabels',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((bar, i) => {
+          const v = ds.data[i];
+          if (v == null) return;
+          ctx.save();
+          ctx.fillStyle = 'rgba(200,225,245,0.80)';
+          ctx.font = '11px Inter, sans-serif';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`€${v >= 1000 ? (v/1000).toFixed(1)+'B' : v+'M'}`, bar.x + 7, bar.y);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   new Chart(document.getElementById('playerMvChart'), {
-    type: 'bar', plugins: [hBar3D],
+    type: 'bar', plugins: [hBar3DShallow, mvValueLabels],
     data: {
       labels: topPlayers.map(p => p.name),
       datasets: [{
         label: 'Market Value (€M)',
         data: topPlayers.map(p => p.mv),
         backgroundColor: topPlayers.map(p => posColors[p.pos] || '#888'),
-        borderRadius: 3, borderSkipped: false, barThickness: 22
+        borderRadius: 3, borderSkipped: false, barThickness: 24
       }]
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 72 } },
       animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
@@ -1750,18 +1831,19 @@
   ];
 
   new Chart(document.getElementById('teamMvChart'), {
-    type: 'bar', plugins: [hBar3D],
+    type: 'bar', plugins: [hBar3DShallow, mvValueLabels],
     data: {
       labels: teamMvData.map(d => d.team),
       datasets: [{
         label: 'Total Squad Value (€M)',
         data: teamMvData.map(d => d.total),
         backgroundColor: teamMvData.map(d => (CONF_COLORS[d.conf] || '#888') + 'dd'),
-        borderRadius: 3, borderSkipped: false, barThickness: 18
+        borderRadius: 3, borderSkipped: false, barThickness: 20
       }]
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 80 } },
       animation: { duration: 700, delay: wfDelay, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
