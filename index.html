@@ -37,7 +37,42 @@
     padding-bottom: 80px;
   }
 
-  /* ── Page-load fade-in ── */
+  /* ── Football intro overlay ── */
+  #ball-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  #ball-overlay.done { display: none; }
+
+  #intro-ball {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform, width, height, opacity;
+  }
+
+  /* ── Persistent corner ball ── */
+  #corner-ball {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    z-index: 9998;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,.5));
+    animation: cornerBounce 1s ease-in-out infinite alternate;
+    opacity: 0;
+    transition: opacity .4s;
+  }
+  #corner-ball.visible { opacity: 1; }
+  @keyframes cornerBounce {
+    from { transform: translateY(0) rotate(0deg); }
+    to   { transform: translateY(-12px) rotate(18deg); }
+  }
+
+  /* Delay all page fade-ins until intro is done */
+  body.intro-running .fade-in { animation: none; opacity: 0; }
+  body.intro-done    .fade-in { animation: fadeUp .6s ease both; }
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(18px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -397,7 +432,15 @@
   }
 </style>
 </head>
-<body>
+<body class="intro-running">
+
+<!-- ── Football intro overlay ── -->
+<div id="ball-overlay">
+  <canvas id="intro-ball"></canvas>
+</div>
+
+<!-- ── Persistent corner ball ── -->
+<canvas id="corner-ball"></canvas>
 
 <!-- ── Header ── -->
 <header class="site-header fade-in fade-in-1">
@@ -941,6 +984,167 @@
       }
     }
   });
+
+  /* ══════════════════════════════════════════
+     FOOTBALL INTRO + CORNER BOUNCE
+  ══════════════════════════════════════════ */
+
+  /* Draw a realistic football on a canvas element.
+     size = canvas pixel dimensions, spin = rotation in radians */
+  function drawFootball(canvas, size, spin) {
+    canvas.width  = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const cx  = size / 2, cy = size / 2, r = size / 2 - 1;
+    ctx.clearRect(0, 0, size, size);
+
+    /* white ball base */
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fill();
+
+    /* subtle 3-D shading */
+    const shine = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.05, cx, cy, r);
+    shine.addColorStop(0, 'rgba(255,255,255,0.55)');
+    shine.addColorStop(0.6, 'rgba(255,255,255,0)');
+    shine.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = shine;
+    ctx.fill();
+
+    /* clip all patch drawing to the ball */
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+
+    /* rotate the whole pattern around the centre */
+    ctx.translate(cx, cy);
+    ctx.rotate(spin);
+    ctx.translate(-cx, -cy);
+
+    /* draw classic football patches:
+       1 central pentagon + 5 surrounding pentagons projected onto sphere */
+    const PR = r * 0.28; /* pentagon "radius" */
+
+    function pentagon(ox, oy, pr, rotDeg) {
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (Math.PI * 2 * i / 5) + (rotDeg * Math.PI / 180) - Math.PI / 2;
+        const px = ox + pr * Math.cos(a);
+        const py = oy + pr * Math.sin(a);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    const patches = [
+      { ox: cx,                   oy: cy,                   rot: 0 },
+      { ox: cx,                   oy: cy - r * 0.54,        rot: 0 },
+      { ox: cx + r * 0.51,        oy: cy - r * 0.17,        rot: 72 },
+      { ox: cx + r * 0.32,        oy: cy + r * 0.44,        rot: 144 },
+      { ox: cx - r * 0.32,        oy: cy + r * 0.44,        rot: 216 },
+      { ox: cx - r * 0.51,        oy: cy - r * 0.17,        rot: 288 },
+    ];
+
+    patches.forEach(p => {
+      pentagon(p.ox, p.oy, PR, p.rot);
+      ctx.fillStyle   = '#111';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth   = size * 0.012;
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    ctx.restore();
+
+    /* outer border */
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth   = size * 0.018;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ── Intro animation ── */
+  (function runIntro() {
+    const overlay    = document.getElementById('ball-overlay');
+    const ballCanvas = document.getElementById('intro-ball');
+    const cornerCanvas = document.getElementById('corner-ball');
+    const vw = window.innerWidth, vh = window.innerHeight;
+
+    /* keyframes: {t, x, y, size, spin} */
+    const duration = 1800; /* ms total */
+    let startTime  = null;
+    let spin       = 0;
+
+    function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    /* path: top-left → centre (max) → bottom-right (small) */
+    function getFrame(t) {
+      if (t <= 0.5) {
+        const e = easeInOut(t / 0.5);
+        return {
+          x:    lerp(-80, vw / 2, e),
+          y:    lerp(-80, vh / 2, e),
+          size: lerp(60,  Math.min(vw, vh) * 1.05, e)
+        };
+      } else {
+        const e = easeInOut((t - 0.5) / 0.5);
+        return {
+          x:    lerp(vw / 2,       vw + 40, e),
+          y:    lerp(vh / 2,       vh + 40, e),
+          size: lerp(Math.min(vw, vh) * 1.05, 54, e)
+        };
+      }
+    }
+
+    function frame(ts) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      const t       = Math.min(elapsed / duration, 1);
+      const { x, y, size } = getFrame(t);
+
+      spin += 0.04;
+      drawFootball(ballCanvas, Math.ceil(size), spin);
+
+      ballCanvas.style.width  = size + 'px';
+      ballCanvas.style.height = size + 'px';
+      ballCanvas.style.left   = (x - size / 2) + 'px';
+      ballCanvas.style.top    = (y - size / 2) + 'px';
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        /* intro done — show corner ball, start dashboard */
+        overlay.classList.add('done');
+        document.body.classList.remove('intro-running');
+        document.body.classList.add('intro-done');
+
+        /* draw corner ball once, then CSS animation handles bounce */
+        drawFootball(cornerCanvas, 108, 0);
+        cornerCanvas.style.width  = '54px';
+        cornerCanvas.style.height = '54px';
+        cornerCanvas.classList.add('visible');
+
+        /* keep corner ball spinning gently */
+        let cornerSpin = 0;
+        function spinCorner() {
+          cornerSpin += 0.015;
+          drawFootball(cornerCanvas, 108, cornerSpin);
+          requestAnimationFrame(spinCorner);
+        }
+        spinCorner();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  })();
 </script>
 </body>
 </html>
